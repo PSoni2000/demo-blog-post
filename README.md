@@ -1,70 +1,91 @@
-# Getting Started with Create React App
+# About Project App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Language / Library Used
 
-## Available Scripts
+1. React JS
+2. react-router-dom
 
-In the project directory, you can run:
+## Future Plans
 
-### `npm start`
+# NOTES
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Lazy Loading - Load code only when it's needed
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Which means that we wanna load certain peaces of code only when they are needed.
 
-### `npm test`
+So for example, when we visit this website and we load on the homepage we don't need the blog page code yet. We will only need it later once we navigate there. and at that point of time, once we navigate there. it should be downloaded. thats exactly what lazy loading will do for us.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+So, in order to load blog page lazily -
 
-### `npm run build`
+1. remove import
+   ```
+   import BlogPage, { loader as postsLoader } from './pages/Blog';
+   ```
+   otherwise it's always loaded.
+2. We have to re-add it but in a way that it's only loaded when it's needed.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+   **To Load functions lazily -**
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+   ```
+   // old way
+   // loader: postsLoader,
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+   // lazy loading
+   loader: () =>
+             import('./pages/Blog')
+               .then((module) => module.loader()),
+   ```
 
-### `npm run eject`
+   here this import() is same import we use for loading a file. but it turns out that you can actually also call import as a function and in that case it will import something dynamically, only when it's needed.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+   Note = that loader function `module.loader()` should be executed. as we know it will return a promise which yield a response.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+   now only when we try to visit the blog page. only then the blog file will be imported and this loader function from that file will be executed.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+   **To Load components lazily -**
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+   Loading components lazily is similar to loading functions lazily with just a small change
 
-## Learn More
+   the reason why we cannot load components lazily similar to functions is that
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+   ```
+   const BlogPage = () => import('./pages/Blog');
+   ```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+   is not a valid component. A function is only a valid component only when its returning JSX code or something like that.
 
-### Code Splitting
+   but this function `() => import('./pages/Blog');` here is returning a promise.
+   To solve this problem React give us a special function, which we have to wrap around this function.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+   ```
+   import { lazy } from 'react';
+   ```
 
-### Analyzing the Bundle Size
+   lazy is executed and takes this function, with the dynamic import as an argument. and now blog page can indeed be used as a component.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+   ```
+   // old way
+   // import BlogPage, { loader as postsLoader } from './pages/Blog';
 
-### Making a Progressive Web App
+   // lazy loading
+   const BlogPage = lazy(() => import('./pages/Blog'));
+   ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+3. Now the code will work again but it will take some time to load the code for this component because that code has to be downloaded after all. and the effort you must wrap this with suspense component. (suspense component - wait for content to be loaded before actually rendering the content)
 
-### Advanced Configuration
+   ```
+   import { lazy, Suspense } from 'react';
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+   ...
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+   {
+      path: ':id',
+      element: (
+        <Suspense fallback={<p>Loading...</p>}>
+          <PostPage />
+        </Suspense>
+      ),
+      loader: (meta) =>
+        import('./pages/Post').then((module) => module.loader(meta)),
+   },
+   ```
